@@ -9,6 +9,7 @@ import { LLM } from "../types";
  * - 去掉口语化表达
  */
 export class QueryRewriter {
+  
   constructor(private llm: LLM) {}
 
   async rewrite(question: string): Promise<string> {
