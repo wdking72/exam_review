@@ -1,12 +1,60 @@
-import { EmbeddingClient } from "./embedding"
-import { VectorStore } from "./vector-store"
-import { join } from "path"
-import { readFile } from "fs/promises"
+import { writeFile, stat, mkdir, readFile } from "fs/promises"
+import { existsSync } from "fs"
+import { join, dirname } from "path"
+import { fileURLToPath } from "url"
+import { createHash } from "crypto"
+import { EmbeddingClient } from "./embedding.js"
+import { VectorStore } from "./vector-store.js"
 import { chunkMarkdown } from "./chunker.js"
 import { KeywordSearch } from "./keyword-search.js"
 import { QueryRewriter } from "./query-rewriter.js"
 import { rerank } from "./reranker.js"
 import type { RerankResult } from "./reranker.js"
+
+// 缓存目录：项目根目录下的 .rag-cache/
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const CACHE_DIR = join(__dirname, "..", "..", ".rag-cache")
+
+/** 每条 chunk 的缓存数据 */
+interface CacheData {
+  texts: string[]
+  embeddings: number[][]
+  headings: string[]
+}
+
+/**
+ * 生成缓存文件路径
+ * 用文件路径 + 修改时间做 key，文件变更后自动失效
+ */
+function cacheKey(filePath: string, mtimeMs: number): string {
+  const hash = createHash("md5").update(filePath + "@" + mtimeMs).digest("hex")
+  return join(CACHE_DIR, `${hash}.json`)
+}
+
+/** 尝试读取缓存，不存在或损坏返回 null */
+async function loadCache(filePath: string): Promise<CacheData | null> {
+  try {
+    const mtime = (await stat(filePath)).mtimeMs
+    const path = cacheKey(filePath, mtime)
+    if (!existsSync(path)) return null
+    return JSON.parse(await readFile(path, "utf-8"))
+  } catch {
+    return null
+  }
+}
+
+/** 写入 embedding 缓存（文件不变时下次直接复用） */
+async function saveCache(filePath: string, data: CacheData): Promise<void> {
+  try {
+    if (!existsSync(CACHE_DIR)) await mkdir(CACHE_DIR, { recursive: true })
+    const mtime = (await stat(filePath)).mtimeMs
+    const path = cacheKey(filePath, mtime)
+    await writeFile(path, JSON.stringify(data), "utf-8")
+  } catch {
+    // 缓存失败不影响主流程
+  }
+}
+
 
 
 export class RAGEngine {
@@ -22,20 +70,31 @@ export class RAGEngine {
   }
   // 从文件加载知识库
   async loadFromFile(filePath: string, maxChunkSize?: number): Promise<void> {
-    // 读取知识库
-    const md = await readFile(filePath, 'utf-8')
-    // 分块
+    const md = await readFile(filePath, "utf-8")
     const chunks = chunkMarkdown(md, maxChunkSize)
     const texts = chunks.map((c) => c.text)
-    // 向量化
-    const embeddings = await this.embed.embedMany(texts)
-    // 存储向量
+    const headings = chunks.map((c) => c.heading)
+
+    // 尝试从缓存加载 embedding，免去 API 调用
+    const cached = await loadCache(filePath)
+    let embeddings: number[][]
+
+    if (cached && cached.texts.length === texts.length) {
+      // 缓存命中且 chunk 数量一致，直接复用
+      embeddings = cached.embeddings
+    } else {
+      // 没有缓存或文件已变，调 API 计算
+      embeddings = await this.embed.embedMany(texts)
+      // 后台写入缓存，不阻塞返回
+      saveCache(filePath, { texts, embeddings, headings })
+    }
+
+    // 分别存入向量库和关键词索引
     for (let i = 0; i < texts.length; i++) {
-      this.store.add(texts[i], embeddings[i], chunks[i].heading)
-      this.keywordSearch?.add(`chunk_${i}`, texts[i], chunks[i].heading)
+      this.store.add(texts[i], embeddings[i], headings[i])
+      this.keywordSearch?.add(`chunk_${i}`, texts[i], headings[i])
     }
     this.loaded = true
-
   }
   // 加载纯文本
   async loadFromText(text: string, maxChunkSize?: number): Promise<void> {
