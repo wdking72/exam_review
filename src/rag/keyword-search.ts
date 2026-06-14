@@ -1,8 +1,5 @@
-interface KeywordResult {
-  text: string
-  score: number
-  metadata?: string
-}
+import type { KeywordResult } from "../types/rag.js"
+
 // BM25 关键词检索
 export class KeywordSearch {
   private invertedIndex = new Map<string, Map<number, number>>()

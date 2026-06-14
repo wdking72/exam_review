@@ -10,19 +10,7 @@
  * 3. finalScore = alpha × vecNorm + (1-alpha) × kwNorm
  */
 
-export interface RerankResult {
-  text: string
-  score: number
-  metadata?: string
-}
-
-interface RerankParams {
-  vectorResults: RerankResult[]
-  keywordResults: RerankResult[]
-  topK: number
-  /** 语义权重 [0,1]，越大越偏向向量检索，默认 0.5 */
-  alpha?: number
-}
+import type { RerankResult, RerankParams } from "../types/rag.js"
 
 /**
  * 融合重排：合并向量 + 关键词结果，按综合分数排序

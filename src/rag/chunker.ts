@@ -1,9 +1,4 @@
-export interface Chunk {
-  id: string;
-  text: string;
-  heading: string;  // 所属标题（如 "极限计算方法"）
-  index: number;
-}
+import type { Chunk } from "../types/rag.js"
 
 /**
  * Markdown 文档分块器
