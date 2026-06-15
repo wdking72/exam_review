@@ -3,7 +3,7 @@
 // 让 agent 循环逻辑先跑通，下一阶段接入真实 LLM
 // ============================================================
 
-import type { LLM } from "../types.js";
+import type { LLM } from "../types/index.js";
 
 /**
  * MockLLM 模拟 LLM 的 ReAct 输出格式：

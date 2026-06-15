@@ -1,9 +1,9 @@
-import { EmbeddingClient } from "./rag/embedding.js";
-import { VectorStore } from "./rag/vector-store.js";
-import { KeywordSearch } from "./rag/keyword-search.js";
-import { QueryRewriter } from "./rag/query-rewriter.js";
-import { RAGEngine } from "./rag/rag-engine.js";
-import { OpenAICompatibleLLM } from "./llm/llm-openai.js";
+import { EmbeddingClient } from "../rag/embedding.js";
+import { VectorStore } from "../rag/vector-store.js";
+import { KeywordSearch } from "../rag/keyword-search.js";
+import { QueryRewriter } from "../rag/query-rewriter.js";
+import { RAGEngine } from "../rag/rag-engine.js";
+import { OpenAICompatibleLLM } from "../llm/llm-openai.js";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,7 +23,7 @@ async function main() {
   // 完整引擎：向量 + 关键词 + 改写
   const engine = new RAGEngine(embed, store, keywordSearch, queryRewriter);
 
-  const kbPath = join(__dirname, "..", "knowledge", "高等数学（上）-期末速成.md");
+  const kbPath = join(__dirname, "..", "..", "knowledge", "高等数学（上）-期末速成.md");
   console.log("📖 正在加载知识库...\n");
   await engine.loadFromFile(kbPath);
   console.log("✅ 加载完成\n");

@@ -1,4 +1,4 @@
-import type { LLM } from "../types.js";
+import type { LLM } from "../types/index.js";
 import Anthropic from "@anthropic-ai/sdk";
 
 export class ClaudeLLM implements LLM {

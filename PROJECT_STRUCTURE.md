@@ -10,11 +10,8 @@ exam-cram-agent/
 │
 ├── src/
 │   ├── types/                          # 类型定义
-│   │   ├── ts                          # 核心类型（Agent、LLM、Tool）
+│   │   ├── index.ts                    # 核心类型（Agent、LLM、Tool）
 │   │   └── rag.ts                      # RAG 共享类型（Chunk、KeywordResult、RerankResult、CacheData）
-│   │
-│   ├── utils/                          # 工具函数
-│   │   └── rag-cache.ts                # Embedding 缓存读写（loadCache / saveCache）
 │   │
 │   ├── core/                           # Agent 核心
 │   │   ├── agent.ts                    # ReAct Agent（Thought/Action/Observation 循环）
@@ -33,13 +30,21 @@ exam-cram-agent/
 │   │   ├── keyword-search.ts           # BM25 关键词检索（倒排索引）
 │   │   ├── reranker.ts                 # 重排序器（融合向量分 + 关键词分）
 │   │   ├── query-rewriter.ts           # 查询改写器（LLM 改写用户问题）
-│   │   └── rag-engine.ts               # RAG 引擎（串联完整流水线）
+│   │   ├── rag-engine.ts               # RAG 引擎（串联完整流水线）
+│   │   └── rag-cache.ts                # Embedding 缓存读写（loadCache / saveCache）
 │   │
 │   ├── tools/                          # Agent 工具
 │   │   └── tools.ts                    # 工具注册中心 + 内置工具（知识库检索、模拟题生成）
 │   │
-│   ├── index.ts                        # 入口文件（CLI 参数解析 + 启动各模式）
-│   └── test-rag.ts                     # RAG 测试脚本
+│   ├── server/                         # HTTP 服务（待开发）
+│   │
+│   ├── scripts/                        # 独立脚本
+│   │   └── test-rag.ts                 # RAG 测试脚本
+│   │
+│   └── index.ts                        # 入口文件（CLI 参数解析 + 启动各模式）
+│
+├── docs/                               # 文档
+│   └── frontend-plan.md                # 前端 + HTTP 服务实施计划
 │
 ├── .learn/                             # 学习进度（learn-it skill）
 ├── .claude/                            # Claude 配置
@@ -53,18 +58,19 @@ exam-cram-agent/
 | 模块 | 职责 |
 |------|------|
 | `types/` | 共享类型定义，减少跨文件循环依赖 |
-| `utils/` | 与业务无关的工具函数 |
 | `core/` | Agent 执行引擎，负责 LLM 调用 + 工具循环 |
 | `llm/` | LLM 适配层，统一生成接口 |
-| `rag/` | RAG 流水线：分块 → 向量化 → 检索 → 重排 |
+| `rag/` | RAG 流水线：分块 → 向量化 → 检索 → 重排 + 缓存 |
 | `tools/` | Agent 可用工具（可扩展） |
+| `server/` | HTTP 服务层（Koa 路由 + SSE） |
+| `scripts/` | 独立脚本（测试、数据准备等） |
 
 ## 数据流
 
 ```
 用户输入
-  → index.ts（CLI / 交互式）
-    → Agent（core/agent.ts）
+  → index.ts（CLI / 交互式 / HTTP 服务）
+    → Agent（core/agent.ts 或 core/agent-native.ts）
       → LLM（llm/）
       → Tool（tools/）
         → RAGEngine（rag/rag-engine.ts）
@@ -78,6 +84,8 @@ exam-cram-agent/
 ## 新增文件指引
 
 - **加类型** → 放在 `types/` 下，按模块分文件
-- **加工具函数** → 放在 `utils/` 下
+- **加工具函数** → 放在所属模块内
 - **加 Agent** → 放在 `core/` 下
 - **加 RAG 组件** → 放在 `rag/` 下
+- **加 HTTP 路由** → 放在 `server/routes/` 下
+- **加脚本** → 放在 `scripts/` 下

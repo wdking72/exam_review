@@ -1,4 +1,4 @@
-import { LLM } from "../types";
+import { LLM } from "../types/index.js";
 
 /**
  * 查询改写器

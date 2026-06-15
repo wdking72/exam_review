@@ -13,7 +13,7 @@
 //   summarization:  超出阈值时把旧轮压缩成摘要
 // ============================================================
 
-import type { LLM } from "../types.js";
+import type { LLM } from "../types/index.js";
 
 export type MemoryStrategy = "sliding-window" | "summarization";
 

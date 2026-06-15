@@ -4,7 +4,7 @@
 // TODO: 你需要实现 run 方法中的 ReAct 循环逻辑
 // ============================================================
 
-import type { AgentConfig, AgentResult, AgentStep } from "../types.js";
+import type { AgentConfig, AgentResult, AgentStep } from "../types/index.js";
 
 export class Agent {
   private config: AgentConfig;

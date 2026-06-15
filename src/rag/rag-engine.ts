@@ -5,7 +5,7 @@ import { chunkMarkdown } from "./chunker.js"
 import { KeywordSearch } from "./keyword-search.js"
 import { QueryRewriter } from "./query-rewriter.js"
 import { rerank } from "./reranker.js"
-import { loadCache, saveCache } from "../utils/rag-cache.js"
+import { loadCache, saveCache } from "./rag-cache.js"
 import type { RerankResult } from "../types/rag.js"
 
 export class RAGEngine {

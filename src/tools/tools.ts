@@ -1,4 +1,4 @@
-import type { Tool, ToolRegistryType } from "../types.js";
+import type { Tool, ToolRegistryType } from "../types/index.js";
 import type { RAGEngine } from "../rag/rag-engine.js";
 // ============================================================
 // 工具定义

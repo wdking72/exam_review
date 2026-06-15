@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { LLM } from "../types.js";
+import type { LLM } from "../types/index.js";
 
 export class OpenAICompatibleLLM implements LLM {
   private client: OpenAI;

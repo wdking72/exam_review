@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { MemoryManager } from "./memory.js";
-import type { ToolRegistryType, LLM } from "../types.js";
+import type { ToolRegistryType, LLM } from "../types/index.js";
 
 // ============================================================
 // 给 MemoryManager 用的 LLM 包装器（用于 summarization 压缩）
