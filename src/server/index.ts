@@ -31,7 +31,10 @@ export async function startServer(){
   app.use(chatRouter.routes())
   app.use(chatRouter.allowedMethods())
   const PORT = parseInt(process.env.PORT ?? "3001", 10)
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`)
+  return new Promise<void>((resolve, reject) => {
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`)
+      resolve()
+    })
   })
 }

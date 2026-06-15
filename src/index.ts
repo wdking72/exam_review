@@ -23,6 +23,8 @@ const useNative =
   process.argv.includes("--native") || process.argv.includes("--summarize");
 const useSummarize = process.argv.includes("--summarize");
 const useChat = process.argv.includes("--chat");
+const useKoa = process.argv.includes("--server");
+
 // const useRag = process.argv.includes("--rag");
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "https://api.siliconflow.cn/v1";
@@ -51,7 +53,15 @@ const SYSTEM_PROMPT = `你是一个期末复习助手，帮助大学生准备考
 你有工具可用，需要时使用它们，不需要时直接回答。
 始终用中文回答。`;
 
+
 const question = process.argv.slice(2).find((arg) => !arg.startsWith("--"));
+// koa 服务模式,不在终端运行
+if (useKoa) {
+    const { startServer } = await import("./server/index.js")
+    await startServer()
+    // process.exit(0)
+    await new Promise(() => {}) // 保持进程不退出
+} 
 if (!question && !useChat) {
   console.log("用法:");
   console.log('  npm run dev -- "你的问题"            # Mock 模式');
@@ -165,7 +175,7 @@ async function main() {
     console.log(`  轮数: ${stats.totalTurns}`);
     console.log(`  估算 token: ${stats.totalTokens}`);
     console.log(`  摘要长度: ${stats.summaryLength}`);
-  } else {
+  }else {
     const agent = new Agent({
       systemPrompt: SYSTEM_PROMPT,
       maxIterations: 5,
