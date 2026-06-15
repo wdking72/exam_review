@@ -7,6 +7,10 @@ import { join } from "node:path"
   const API_KEY = process.env.API_KEY ?? ""
 
 export async function initRag():  Promise<RAGEngine | undefined> {
+  if (!API_KEY) {                                                                                                     
+      console.warn("[rag] 未配置 API_KEY，跳过知识库加载")                                                              
+      return undefined                                                                                                  
+    }
   try{
       const embed = new EmbeddingClient(API_BASE_URL, API_KEY, "BAAI/bge-m3");
       const store = new VectorStore()

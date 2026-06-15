@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:front\"",
-    "dev:server": "tsx src/index.ts --server",
+    "dev:server": "tsx --env-file=.env.local src/index.ts --server",
     "dev:front": "cd frontend && npm run dev",
-    "dev:cli": "tsx src/index.ts",
+    "dev:cli": "tsx --env-file=.env.local src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
