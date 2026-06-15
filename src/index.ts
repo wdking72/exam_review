@@ -9,13 +9,11 @@ import { OpenAICompatibleLLM } from "./llm/llm-openai.js";
 import { NativeToolAgent } from "./core/agent-native.js";
 import { MemoryManager } from "./core/memory.js";
 import { createTools } from "./tools/tools.js";
-import { EmbeddingClient } from "./rag/embedding.js";
-import { VectorStore } from "./rag/vector-store.js";
-import { RAGEngine } from "./rag/rag-engine.js";
 import * as readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { join, dirname } from "node:path";
+import {  dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { initRag } from "./rag/init-rag.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -25,7 +23,7 @@ const useNative =
   process.argv.includes("--native") || process.argv.includes("--summarize");
 const useSummarize = process.argv.includes("--summarize");
 const useChat = process.argv.includes("--chat");
-const useRag = process.argv.includes("--rag");
+// const useRag = process.argv.includes("--rag");
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "https://api.siliconflow.cn/v1";
 const API_KEY = process.env.API_KEY ?? "sk-garhxpfljifnvwtubmafvmvrwxjukaaolgcdmbghthebzxdv";
@@ -37,17 +35,17 @@ const llm = useOpenAI
     : new MockLLM();
 
 /** 初始化 RAG 引擎并加载知识库 */
-async function initRag(): Promise<RAGEngine | undefined> {
-  if (!useRag) return undefined;
-  const embed = new EmbeddingClient(API_BASE_URL, API_KEY, "BAAI/bge-m3");
-  const store = new VectorStore();
-  const engine = new RAGEngine(embed, store);
-  const kbPath = join(__dirname, "..", "knowledge", "高等数学（上）-期末速成.md");
-  console.log("\n📖 正在加载高数知识库...");
-  await engine.loadFromFile(kbPath);
-  console.log("✅ 知识库加载完成\n");
-  return engine;
-}
+// async function initRag(): Promise<RAGEngine | undefined> {
+//   if (!useRag) return undefined;
+//   const embed = new EmbeddingClient(API_BASE_URL, API_KEY, "BAAI/bge-m3");
+//   const store = new VectorStore();
+//   const engine = new RAGEngine(embed, store);
+//   const kbPath = join(__dirname, "..", "knowledge", "高等数学（上）-期末速成.md");
+//   console.log("\n📖 正在加载高数知识库...");
+//   await engine.loadFromFile(kbPath);
+//   console.log("✅ 知识库加载完成\n");
+//   return engine;
+// }
 
 const SYSTEM_PROMPT = `你是一个期末复习助手，帮助大学生准备考试。
 你有工具可用，需要时使用它们，不需要时直接回答。

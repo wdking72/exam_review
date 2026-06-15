@@ -7,10 +7,10 @@ import { createSSEStream, sendSSEEvent } from "../sse.js"
 import type { RAGEngine } from "../../rag/rag-engine.js"
 import type { Context } from "koa"
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "https://api.siliconflow.cn/v1"
-const API_KEY      = process.env.API_KEY ?? ""
-const MODEL        = process.env.MODEL ?? "nex-agi/Nex-N2-Pro"
-const SYSTEM_PROMPT = `你是一个期末复习助手，帮助大学生准备考试。你有工具可用，需要时使用它们，不需要时直接回答。始终用中文回答。`
+// const API_BASE_URL = process.env.API_BASE_URL ?? "https://api.siliconflow.cn/v1"
+// const API_KEY      = process.env.API_KEY ?? ""
+// const MODEL        = process.env.MODEL ?? "nex-agi/Nex-N2-Pro"
+// const SYSTEM_PROMPT = `你是一个期末复习助手，帮助大学生准备考试。你有工具可用，需要时使用它们，不需要时直接回答。始终用中文回答。`
 
 export function createChatRouter(ragEngine?: RAGEngine) {
   const router = new Router()
@@ -29,13 +29,13 @@ export function createChatRouter(ragEngine?: RAGEngine) {
     // 创建agent
     try {
     const agent = new NativeToolAgent({
-      baseURL: API_BASE_URL,
-      apiKey: API_KEY,
-      model: MODEL,
+      baseURL: process.env.API_BASE_URL!,
+      apiKey: process.env.API_KEY!,
+      model: process.env.MODEL!,
       memory: new MemoryManager({ strategy: "sliding-window", maxTurns: 10 }),
       registry: createTools(useRag ? ragEngine : undefined),
     })
-    agent.init(SYSTEM_PROMPT)
+    agent.init(process.env.SYSTEM_PROMPT!)
     // 需要等待 agent.streamChat 完成，才能结束流
     await agent.streamChat(message, (chunk) => {
       // 根据 chunk类型，选择不同的事件名
@@ -49,9 +49,6 @@ export function createChatRouter(ragEngine?: RAGEngine) {
     } finally {
       stream.end()
     }
-
-
-
   })
   return router // 返回路由实例
 }
