@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import MarkdownRenderer from './MarkdownRenderer.vue'
+
 defineProps<{
   message: {
     role: 'user' | 'assistant' | 'tool'
@@ -24,7 +26,10 @@ defineProps<{
           : 'bg-white text-text-primary border border-gray-200',
       ]"
     >
-      <div class="whitespace-pre-wrap leading-relaxed">{{ message.content }}</div>
+      <!-- 助手消息：使用 Markdown 渲染器解析格式化内容 -->
+      <MarkdownRenderer v-if="message.role === 'assistant'" :content="message.content" />
+      <!-- 用户/工具消息：纯文本展示 -->
+      <div v-else class="whitespace-pre-wrap leading-relaxed">{{ message.content }}</div>
       <div 
         :class="[
           'text-xs mt-2 opacity-70',
