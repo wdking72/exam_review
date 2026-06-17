@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar.vue'
 import { useChat } from '../composables/useChat'
 import { computed } from 'vue'
 
-const { messages, isLoading, error, sendMessage } = useChat()
+const { messages, isLoading, error, sendMessage, cancelMessage } = useChat()
 
 const handleSendMessage = (message: string) => {
   sendMessage(message)
@@ -60,13 +60,21 @@ const progressColor = computed(() => {
           :key="index"
           :message="msg"
         />
-        <div v-if="isLoading" class="flex items-center space-x-2 text-text-secondary">
-          <div class="flex space-x-1">
-            <div class="w-2 h-2 bg-accent-primary rounded-full animate-bounce"></div>
-            <div class="w-2 h-2 bg-accent-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-            <div class="w-2 h-2 bg-accent-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+        <div v-if="isLoading" class="flex items-center justify-between text-text-secondary">
+          <div class="flex items-center space-x-2">
+            <div class="flex space-x-1">
+              <div class="w-2 h-2 bg-accent-primary rounded-full animate-bounce"></div>
+              <div class="w-2 h-2 bg-accent-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+              <div class="w-2 h-2 bg-accent-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            </div>
+            <span class="text-sm">正在思考...</span>
           </div>
-          <span class="text-sm">正在思考...</span>
+          <button
+            @click="cancelMessage"
+            class="text-xs px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            停止
+          </button>
         </div>
         <div v-if="error" class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {{ error }}

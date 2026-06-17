@@ -175,6 +175,12 @@ export class NativeToolAgent {
         }
 
         // 文本 token → 立即回调
+        //
+        // 【流式排查】如果前端不是逐字出现，可在此处加日志打印 delta.content，
+        // 看 for await...of 是不是在 LLM 生成过程中陆续拿到 token：
+        //   - 若日志是逐字打印，但前端仍整段出现 → 问题在 sendSSEEvent/代理层。
+        //   - 若日志也是等整段生成完后一次性打印 → 问题在 OpenAI SDK 或上游模型，
+        //     需要确认 baseURL 对应的模型服务是否真的支持 stream=true。
         if (delta?.content) {
           content += delta.content;
           onToken({ type: "text", content: delta.content });

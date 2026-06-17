@@ -24,8 +24,8 @@ export function createChatRouter(ragEngine?: RAGEngine) {
       ctx.status = 400
       return
     }
-    // 创建sse
-    const stream = createSSEStream(ctx)
+    // 创建sse：直接操作 ctx.res，不经过 Koa stream pipe
+    const res = createSSEStream(ctx)
     // 创建agent
     try {
     const agent = new NativeToolAgent({
@@ -37,17 +37,22 @@ export function createChatRouter(ragEngine?: RAGEngine) {
     })
     agent.init(process.env.SYSTEM_PROMPT!)
     // 需要等待 agent.streamChat 完成，才能结束流
+    //
+    // 【流式关键】agent.streamChat 内部使用 OpenAI SDK 的 stream: true，
+    // 理论上会逐 token 调用此回调。如果回调是按 token 触发的，
+    // 但前端仍是一次性出现，说明数据在 sendSSEEvent() 之后被缓冲，
+    // 而不是在这里没有逐 token 生成。请按 sse.ts 里的排查顺序定位。
     await agent.streamChat(message, (chunk) => {
       // 根据 chunk类型，选择不同的事件名
       const eventName = chunk.type === "done" ? "done" : "token"
-      // 发送事件
-      sendSSEEvent(stream, eventName, JSON.stringify(chunk))
+      // 发送事件：直接写入 ctx.res，数据立即到达客户端
+      sendSSEEvent(res, eventName, JSON.stringify(chunk))
     })
     }
     catch (error: any) {
-      sendSSEEvent(stream, "error", JSON.stringify({type: "error", content: error.message}))
+      sendSSEEvent(res, "error", JSON.stringify({type: "error", content: error.message}))
     } finally {
-      stream.end()
+      res.end()
     }
   })
   return router // 返回路由实例
