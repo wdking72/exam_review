@@ -65,6 +65,8 @@ const progressColor = computed(() => {
           v-for="(msg, index) in messages"
           :key="index"
           :message="msg"
+          :is-loading="isLoading"
+          @continue="handleContinue"
         />
         <div v-if="isLoading" class="flex items-center justify-between text-text-secondary">
           <div class="flex items-center space-x-2">

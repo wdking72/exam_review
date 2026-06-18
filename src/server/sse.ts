@@ -14,6 +14,8 @@ export function createSSEStream(ctx: Context): ServerResponse {
   ctx.set("Connection", "keep-alive");
   // 告诉 nginx 等反向代理不要缓冲响应
   ctx.set("X-Accel-Buffering", "no");
+  // 关闭 Node.js 的 HTTP 响应压缩，避免压缩缓冲导致 SSE 不实时
+  ctx.set("Content-Encoding", "identity");
 
   // 【关键】显式设置 HTTP 200，否则 Koa 默认的 404 状态会被 flush 出去，
   // 导致浏览器/前端 fetch 认为请求失败（虽然响应体仍在流式推送）。
@@ -25,6 +27,7 @@ export function createSSEStream(ctx: Context): ServerResponse {
 
   return ctx.res;
 }
+
 
 /**
  * 发送一条 SSE 事件
@@ -38,4 +41,5 @@ export function createSSEStream(ctx: Context): ServerResponse {
  */
 export function sendSSEEvent(res: ServerResponse, event: string, data: string) {
   res.write(`event: ${event}\ndata: ${data}\n\n`);
+  (res as any).flush?.();
 }

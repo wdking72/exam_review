@@ -91,6 +91,12 @@ export function useChat() {
    * 5. 流结束后清理状态
    */
   const sendMessage = async (content: string) => {
+    // FIX: isLoading 守卫,防止"继续生成"按钮被快速点击导致重复请求
+    // 证据: 用户报告"点击继续生成没反应",根因是按钮被点多次后 messages 错乱
+    if (isLoading.value) {
+      return
+    }
+
     // ---- Step 1: 乐观更新 ----
     // 先把用户消息和空的助手消息推入列表，用户立刻看到对话气泡
     // 助手消息的 content 会在流式接收过程中被逐步填充

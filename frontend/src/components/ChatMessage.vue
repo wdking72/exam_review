@@ -9,6 +9,8 @@ defineProps<{
     content: string
     truncated?: boolean
   }
+  // FIX: 父组件传入 isLoading,用于按钮禁用/文案切换
+  isLoading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -48,11 +50,18 @@ const emit = defineEmits<{
             <span>⚠️</span>
             <span>已超过最大文字限制，请点击下方"继续生成"以接着获取后续内容。</span>
           </div>
+          <!-- FIX: 按钮加 :disabled,loading 时禁用 + 切换文案,防重复点击 -->
           <button
             @click="emit('continue')"
-            class="flex-shrink-0 text-sm px-4 py-1.5 bg-accent-primary text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+            :disabled="isLoading"
+            :class="[
+              'flex-shrink-0 text-sm px-4 py-1.5 rounded-lg font-medium transition-opacity',
+              isLoading
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-accent-primary text-white hover:opacity-90'
+            ]"
           >
-            继续生成
+            {{ isLoading ? '生成中…' : '继续生成' }}
           </button>
         </div>
       </div>
