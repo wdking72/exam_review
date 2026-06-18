@@ -68,6 +68,8 @@ function renderMath(latex: string, displayMode: boolean): string {
       displayMode,
       throwOnError: false,   // 渲染失败不抛异常，降级显示原始文本
       output: 'html',
+      strict: 'ignore',      // FIX: 关闭严格模式,避免 math 块内含中文时报 warn 刷屏
+                             //      学术内容常常 $向量的模: |a|$ 之类,KaTeX 默认 strict='warn' 会刷屏
     })
   } catch {
     return `<code>${latex}</code>`

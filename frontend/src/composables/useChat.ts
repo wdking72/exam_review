@@ -44,18 +44,37 @@ import { ref, nextTick } from 'vue'
 interface Message {
   role: 'user' | 'assistant' | 'tool'
   content: string
+  truncated?: boolean   // FIX: 助手消息被截断时为 true,显示"继续生成"按钮
 }
 
 /** 后端 SSE 推送的 chunk 结构 */
 interface StreamChunk {
-  type: 'text' | 'tool' | 'done' | 'error'
+  type: 'text' | 'tool_start' | 'tool' | 'done' | 'error'
   content: string
+  truncated?: boolean   // FIX: done 事件携带,标识内容被 max_tokens 截断
+}
+
+// FIX: 跨请求携带同一个 conversationId,让后端 memory 复用
+// 证据: debug-memory-lost-on-continue 中"继续"丢失上下文
+// 持久化到 localStorage,刷新页面也不丢会话
+function getOrCreateConversationId(): string {
+  const key = 'examCram.conversationId'
+  let id = localStorage.getItem(key)
+  if (!id) {
+    id = (crypto.randomUUID && crypto.randomUUID()) || `c-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    localStorage.setItem(key, id)
+  }
+  return id
 }
 
 export function useChat() {
   const messages = ref<Message[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+
+  // FIX: 模块级 conversationId,整个 useChat 实例复用
+  // 配合 localStorage 持久化,刷新不丢
+  const conversationId = getOrCreateConversationId()
 
   // AbortController 用于取消进行中的请求
   // 每次 sendMessage 创建新的，取消时调用 abort()
@@ -107,7 +126,9 @@ export function useChat() {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, useRag: true }),
+        // FIX: 带 conversationId 让后端 memory 跨请求保留
+        // 证据: debug-memory-lost-on-continue 中"继续"丢失上下文
+        body: JSON.stringify({ message: content, useRag: true, conversationId }),
         signal: abortController.signal,
       })
 
@@ -168,6 +189,12 @@ export function useChat() {
                   scrollToBottom()
                   break
 
+                case 'tool_start':
+                  // 工具开始执行：显示“正在搜索/生成…”提示，避免空窗期
+                  messages.value[assistantIdx].content += `\n⏳ ${chunk.content}\n`
+                  scrollToBottom()
+                  break
+
                 case 'tool':
                   // 工具调用结果：以特殊格式追加，便于用户识别
                   messages.value[assistantIdx].content += `\n${chunk.content}\n`
@@ -177,6 +204,10 @@ export function useChat() {
                 case 'done':
                   // 流结束：content 包含最终完整回答
                   // 前面的 text token 已经逐步拼接出了完整内容，这里不需要额外处理
+                  // FIX: chunk.truncated 时,把助手消息标记为被截断,UI 会显示"继续生成"按钮
+                  if (chunk.truncated) {
+                    messages.value[assistantIdx].truncated = true
+                  }
                   break
 
                 case 'error':

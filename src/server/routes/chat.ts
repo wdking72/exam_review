@@ -14,8 +14,15 @@ import type { Context } from "koa"
 
 export function createChatRouter(ragEngine?: RAGEngine) {
   const router = new Router()
+  // FIX: 跨请求保留 memory,按 conversationId 索引
+  // 证据: debug-memory-lost-on-continue 中"继续"丢失上下文,根因是每次请求 new MemoryManager()
+  const conversationStore = new Map<string, MemoryManager>();
   router.post('/api/chat/stream', async (ctx: Context) => {
-    const { message, useRag = false } = ctx.request.body as { message: string, useRag: boolean }
+    const { message, useRag = false, conversationId = "default" } = ctx.request.body as {
+      message: string,
+      useRag: boolean,
+      conversationId?: string
+    }
     // 校验参数
     if (!message) {
       ctx.body = {
@@ -26,13 +33,19 @@ export function createChatRouter(ragEngine?: RAGEngine) {
     }
     // 创建sse：直接操作 ctx.res，不经过 Koa stream pipe
     const res = createSSEStream(ctx)
+    // FIX: 同一 conversationId 复用 memory,避免"继续"时丢失上下文
+    let memory = conversationStore.get(conversationId);
+    if (!memory) {
+      memory = new MemoryManager({ strategy: "sliding-window", maxTurns: 10 });
+      conversationStore.set(conversationId, memory);
+    }
     // 创建agent
     try {
     const agent = new NativeToolAgent({
       baseURL: process.env.API_BASE_URL!,
       apiKey: process.env.API_KEY!,
       model: process.env.MODEL!,
-      memory: new MemoryManager({ strategy: "sliding-window", maxTurns: 10 }),
+      memory,
       registry: createTools(useRag ? ragEngine : undefined),
     })
     agent.init(process.env.SYSTEM_PROMPT!)
@@ -46,6 +59,7 @@ export function createChatRouter(ragEngine?: RAGEngine) {
       // 根据 chunk类型，选择不同的事件名
       const eventName = chunk.type === "done" ? "done" : "token"
       // 发送事件：直接写入 ctx.res，数据立即到达客户端
+      // FIX: done 事件带 truncated 字段,前端用 truncated 决定是否显示"继续生成"按钮
       sendSSEEvent(res, eventName, JSON.stringify(chunk))
     })
     }

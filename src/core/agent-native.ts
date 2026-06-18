@@ -40,6 +40,33 @@ function buildTools(registry: ToolRegistryType) {
 }
 
 // ============================================================
+// 工具消息格式化（让 UI 更友好）
+// ============================================================
+function formatToolStart(name: string, args: Record<string, string>): string {
+  if (name === "search_knowledge_base") {
+    return `正在搜索「${args.query || ""}」…`;
+  }
+  if (name === "generate_practice") {
+    return `正在生成「${args.topic || ""}」练习题…`;
+  }
+  return `正在调用工具 ${name}…`;
+}
+
+function formatToolResult(
+  name: string,
+  args: Record<string, string>,
+  result: string
+): string {
+  if (name === "search_knowledge_base") {
+    return `🔍 已搜索「${args.query || ""}」，找到以下资料：\n${result.trim()}`;
+  }
+  if (name === "generate_practice") {
+    return `📝 已生成「${args.topic || ""}」练习题：\n${result.trim()}`;
+  }
+  return `工具 ${name} 执行结果：\n${result.trim()}`;
+}
+
+// ============================================================
 // NativeToolAgent
 // ============================================================
 export class NativeToolAgent {
@@ -141,7 +168,27 @@ export class NativeToolAgent {
   // ============================================================
   async streamChat(
     userMessage: string,
-    onToken: (data: { type: "text" | "tool" | "done"; content: string }) => void
+    onToken: (data: {
+      type: "text" | "tool_start" | "tool" | "done";
+      content: string;
+    }) => void
+  ) {
+    try {
+      return await this._streamChatImpl(userMessage, onToken);
+    } catch (e: any) {
+      // 异常上抛给 chat.ts 的 catch
+      throw e;
+    }
+  }
+
+  // 实际实现拆出来,便于 outer try 包裹
+  private async _streamChatImpl(
+    userMessage: string,
+    onToken: (data: {
+      type: "text" | "tool_start" | "tool" | "done";
+      content: string;
+      truncated?: boolean;     // FIX: done 事件可携带,告诉前端内容被 max_tokens 截断
+    }) => void
   ) {
     const tools = buildTools(this.registry);
     this.memory.addUser(userMessage);
@@ -154,7 +201,9 @@ export class NativeToolAgent {
         messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
         tools,
         stream: true,
-        max_tokens: 1024,
+        // FIX: 从 1024 提升到 4096,避免长回答被 finishReason="length" 截断
+        // 证据: debug-sse-abort-terminate P1 探针显示 iteration=1 时 finishReason=length, contentLength=1609
+        max_tokens: 4096,
       });
 
       // 累加器：按 tool_call index 分组
@@ -216,12 +265,18 @@ export class NativeToolAgent {
 
         // 逐个执行 tool
         for (const tc of toolCalls) {
-          const args = JSON.parse(tc.arguments);
-          const result = await this.registry.execute(tc.name, args);
+          const args: Record<string, string> = JSON.parse(tc.arguments);
+          // 先通知前端"正在执行工具"，避免空窗期
+          onToken({
+            type: "tool_start",
+            content: formatToolStart(tc.name, args),
+          });
+
+          const result: string = await this.registry.execute(tc.name, args);
 
           onToken({
             type: "tool",
-            content: `\n  tool: ${tc.name}(${JSON.stringify(args)})\n  result: ${result.slice(0, 100)}...\n`,
+            content: formatToolResult(tc.name, args, result),
           });
 
           this.memory.addTool(result, tc.id);
@@ -232,7 +287,17 @@ export class NativeToolAgent {
       } else {
         // 没有 tool call → 最终回答
         this.memory.addAssistant(content);
-        onToken({ type: "done", content });
+        // FIX: finishReason=length 时,通知前端内容被截断
+        // v2: 用 truncated:true 结构化字段,前端用 v-if 决定是否显示"继续生成"按钮
+        if (finishReason === "length") {
+          onToken({
+            type: "done",
+            content,
+            truncated: true,
+          });
+        } else {
+          onToken({ type: "done", content });
+        }
         return;
       }
     }

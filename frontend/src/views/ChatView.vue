@@ -11,6 +11,12 @@ const handleSendMessage = (message: string) => {
   sendMessage(message)
 }
 
+// FIX: 助手消息被截断时,"继续生成"按钮回调
+// 发"继续"让后端接着生成,memory 已保留前文 context
+const handleContinue = () => {
+  sendMessage('继续')
+}
+
 const progress = computed(() => {
   const userMessages = messages.value.filter(m => m.role === 'user').length
   return Math.min(userMessages * 10, 100)
