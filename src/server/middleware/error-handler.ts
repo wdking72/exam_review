@@ -8,6 +8,7 @@ export function errorHandler(): Middleware {
       ctx.status = error.status ?? 500
       ctx.body = {
         error: {
+          code: error.code ?? "INTERNAL_ERROR",
           message: error.message ?? "Internal Server Error"
         }
       }
