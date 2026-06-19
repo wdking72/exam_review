@@ -61,7 +61,20 @@ export class Agent {
       if (actionMatch) {
         const toolName = actionMatch[1]
         const toolArgsRaw = actionMatch[2]
-        const toolArgs: Record<string, string> = JSON.parse(toolArgsRaw) ?? {}
+
+        let toolArgs: Record<string, string>
+        try {
+          const parsed = JSON.parse(toolArgsRaw) as unknown
+          toolArgs = typeof parsed === "object" && parsed !== null
+            ? Object.fromEntries(
+                Object.entries(parsed).map(([k, v]) => [k, String(v)])
+              )
+            : {}
+        } catch {
+          steps.push({ thought, toolCall: { name: toolName, arguments: {} }, toolResult: `参数解析失败: ${toolArgsRaw}` })
+          context += `\nAction: ${toolName}(${toolArgsRaw})\nObservation: 参数不是合法 JSON，请使用 {"key": "value"} 格式`
+          continue
+        }
 
         // 找到对应的工具
         const toolResult = await this.config.tools.execute(toolName, toolArgs)
@@ -81,7 +94,8 @@ export class Agent {
           steps
         }
       }
-      // ===== 临时占位，让项目能跑通 =====
+
+      // 未匹配到 Action/Answer，把原始响应作为上下文继续
       steps.push({ thought: `Iteration ${i + 1}: ${response.slice(0, 100)}...` });
       context += `\n${response}\n`;
     }

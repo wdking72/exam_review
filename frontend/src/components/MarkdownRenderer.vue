@@ -17,48 +17,6 @@ const props = defineProps<{
 // 解决方案：在 marked 解析前，先提取数学公式用占位符替换，
 // marked 解析完成后再把 KaTeX 渲染结果替换回来。
 const MATH_PLACEHOLDER = '%%MATH_BLOCK_'
-let mathIndex = 0
-const mathBlocks: string[] = []
-
-// 提取数学公式并替换为占位符
-// 支持格式：\[...\]（行间）、$$...$$（行间）、\(...\)（行内）、$...$（行内）
-function extractMath(text: string): string {
-  // 行间公式：\[...\] 和 $$...$$（贪婪匹配，支持多行）
-  text = text.replace(/\\\[[\s\S]*?\\\]/g, (m) => {
-    const latex = m.slice(2, -2).trim()
-    const html = renderMath(latex, true)
-    const placeholder = `${MATH_PLACEHOLDER}${mathIndex++}%%`
-    mathBlocks.push(html)
-    return placeholder
-  })
-  text = text.replace(/\$\$[\s\S]*?\$\$/g, (m) => {
-    const latex = m.slice(2, -2).trim()
-    const html = renderMath(latex, true)
-    const placeholder = `${MATH_PLACEHOLDER}${mathIndex++}%%`
-    mathBlocks.push(html)
-    return placeholder
-  })
-
-  // 行内公式：\(...\)（非贪婪，避免吃掉相邻文本）
-  text = text.replace(/\\\([\s\S]*?\\\)/g, (m) => {
-    const latex = m.slice(2, -2).trim()
-    const html = renderMath(latex, false)
-    const placeholder = `${MATH_PLACEHOLDER}${mathIndex++}%%`
-    mathBlocks.push(html)
-    return placeholder
-  })
-
-  // 行内公式：$...$（跳过 $$，只匹配单 $）
-  // 要求 $ 前后不是空格/数字，避免误匹配货币符号
-  text = text.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_m, latex) => {
-    const html = renderMath(latex.trim(), false)
-    const placeholder = `${MATH_PLACEHOLDER}${mathIndex++}%%`
-    mathBlocks.push(html)
-    return placeholder
-  })
-
-  return text
-}
 
 // KaTeX 渲染：将 LaTeX 字符串转为 HTML
 // displayMode=true 时渲染为居中的独立公式块，false 时渲染为行内公式
@@ -76,12 +34,59 @@ function renderMath(latex: string, displayMode: boolean): string {
   }
 }
 
-// 恢复占位符为 KaTeX 渲染结果
-function restoreMath(html: string): string {
-  mathBlocks.forEach((block, i) => {
-    html = html.replace(new RegExp(`${MATH_PLACEHOLDER}${i}%%`, 'g'), block)
-  })
-  return html
+// 单次渲染的完整流程：提取公式 → marked 解析 → 恢复公式
+function renderMarkdown(text: string): string {
+  const mathBlocks: string[] = []
+  let mathIndex = 0
+
+  function extractMath(src: string): string {
+    // 行间公式：\[...\] 和 $$...$$（贪婪匹配，支持多行）
+    src = src.replace(/\\\[[\s\S]*?\\\]/g, (m) => {
+      const latex = m.slice(2, -2).trim()
+      const html = renderMath(latex, true)
+      const placeholder = `${MATH_PLACEHOLDER}${mathIndex++}%%`
+      mathBlocks.push(html)
+      return placeholder
+    })
+    src = src.replace(/\$\$[\s\S]*?\$\$/g, (m) => {
+      const latex = m.slice(2, -2).trim()
+      const html = renderMath(latex, true)
+      const placeholder = `${MATH_PLACEHOLDER}${mathIndex++}%%`
+      mathBlocks.push(html)
+      return placeholder
+    })
+
+    // 行内公式：\(...\)（非贪婪，避免吃掉相邻文本）
+    src = src.replace(/\\\([\s\S]*?\\\)/g, (m) => {
+      const latex = m.slice(2, -2).trim()
+      const html = renderMath(latex, false)
+      const placeholder = `${MATH_PLACEHOLDER}${mathIndex++}%%`
+      mathBlocks.push(html)
+      return placeholder
+    })
+
+    // 行内公式：$...$（跳过 $$，只匹配单 $）
+    // 要求 $ 前后不是空格/数字，避免误匹配货币符号
+    src = src.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_m, latex) => {
+      const html = renderMath(latex.trim(), false)
+      const placeholder = `${MATH_PLACEHOLDER}${mathIndex++}%%`
+      mathBlocks.push(html)
+      return placeholder
+    })
+
+    return src
+  }
+
+  function restoreMath(html: string): string {
+    mathBlocks.forEach((block, i) => {
+      html = html.replace(new RegExp(`${MATH_PLACEHOLDER}${i}%%`, 'g'), block)
+    })
+    return html
+  }
+
+  const mathExtracted = extractMath(text)
+  const rawHtml = marked.parse(mathExtracted, { renderer }) as string
+  return restoreMath(rawHtml)
 }
 
 // ==================== 代码高亮 ====================
@@ -109,18 +114,10 @@ marked.setOptions({
 const sanitizedHtml = computed(() => {
   if (!props.content) return ''
 
-  // 每次渲染重置状态（computed 会重复执行）
-  mathIndex = 0
-  mathBlocks.length = 0
-
   // 1. 提取数学公式，用占位符替换，防止 marked 破坏 LaTeX 语法
-  const mathExtracted = extractMath(props.content)
-
   // 2. marked 将 Markdown 语法转成 HTML 字符串（使用自定义 renderer 实现代码高亮）
-  const rawHtml = marked.parse(mathExtracted, { renderer }) as string
-
   // 3. 将占位符替换回 KaTeX 渲染后的 HTML
-  const withMath = restoreMath(rawHtml)
+  const withMath = renderMarkdown(props.content)
 
   // 4. DOMPurify 消毒：移除所有 XSS 攻击向量
   //    - 剥离 <script>、<iframe>、<object> 等危险标签

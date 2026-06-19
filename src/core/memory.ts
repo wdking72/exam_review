@@ -111,13 +111,12 @@ export class MemoryManager {
       return [...systemMsgs, ...nonSystem.slice(-keep)];
     }
 
-    // summarization: 历史摘要 + 最近 N 轮
+    // summarization: 把历史摘要合并进 system prompt，避免连续出现两条 user 消息
     const recent = nonSystem.slice(-this.config.maxTurns * 2);
-    const summaryMsg: Message = {
-      role: "user",
-      content: `[历史摘要] ${this.summary || "（尚无历史）"}`,
-    };
-    return [...systemMsgs, summaryMsg, ...recent];
+    if (this.summary && systemMsgs.length > 0) {
+      systemMsgs[systemMsgs.length - 1].content += `\n\n[历史摘要] ${this.summary}`;
+    }
+    return [...systemMsgs, ...recent];
   }
 
   // ---- 压缩 ----

@@ -3,7 +3,7 @@ import type { KeywordResult } from "../types/rag.js"
 // BM25 关键词检索
 export class KeywordSearch {
   private invertedIndex = new Map<string, Map<number, number>>()
-  private docs: { id: string; text: string; metadata?: string }[] = []
+  private docs: { id: string; text: string; metadata?: string; docLen: number }[] = []
   private docCount: number = 0
   private avgDocLen: number = 0
 
@@ -15,9 +15,9 @@ export class KeywordSearch {
   }
   add(id: string, text: string, metadata?: string) {
     // 分词并存储
-    this.docs.push({ id, text, metadata })
-    const docIndex = this.docCount
     const tokens = this.tokenize(text)
+    this.docs.push({ id, text, metadata, docLen: tokens.length })
+    const docIndex = this.docCount
     const termCounts = new Map<string, number>()
     for (const token of tokens) {
       termCounts.set(token, (termCounts.get(token) || 0) + 1)
@@ -58,7 +58,7 @@ export class KeywordSearch {
       const idf = Math.log((this.docCount - df + 0.5) / (df + 0.5) + 1)
 
       for (const [docIndex, tf] of postingList) {
-        const docLen = this.tokenize(this.docs[docIndex].text).length
+        const docLen = this.docs[docIndex].docLen
         // TF 归一化：抑制长文档的 TF 优势
         const tfNorm =
           (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (docLen / this.avgDocLen)))
