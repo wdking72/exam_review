@@ -6,6 +6,7 @@ import { createTools } from "../../tools/tools.js"
 import { createSSEStream, sendSSEEvent } from "../sse.js"
 import type { RAGEngine } from "../../rag/rag-engine.js"
 import type { Context } from "koa"
+import { validateBody } from "../middleware/validate.js"
 
 // const API_BASE_URL = process.env.API_BASE_URL ?? "https://api.siliconflow.cn/v1"
 // const API_KEY      = process.env.API_KEY ?? ""
@@ -13,23 +14,15 @@ import type { Context } from "koa"
 // const SYSTEM_PROMPT = `你是一个期末复习助手，帮助大学生准备考试。你有工具可用，需要时使用它们，不需要时直接回答。始终用中文回答。`
 
 export function createChatRouter(ragEngine?: RAGEngine) {
-  const router = new Router()
+  const router = new Router({ prefix: '/api' })
   // FIX: 跨请求保留 memory,按 conversationId 索引
   // 证据: debug-memory-lost-on-continue 中"继续"丢失上下文,根因是每次请求 new MemoryManager()
   const conversationStore = new Map<string, MemoryManager>();
-  router.post('/api/chat/stream', async (ctx: Context) => {
+  router.post('/chat/stream', validateBody('message'), async (ctx: Context) => {
     const { message, useRag = false, conversationId = "default" } = ctx.request.body as {
       message: string,
       useRag: boolean,
       conversationId?: string
-    }
-    // 校验参数
-    if (!message) {
-      ctx.body = {
-        error: 'message is required',
-      }
-      ctx.status = 400
-      return
     }
     // 创建sse：直接操作 ctx.res，不经过 Koa stream pipe
     const res = createSSEStream(ctx)
