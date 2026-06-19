@@ -7,13 +7,16 @@ import { createChatRouter } from './routes/chat.js'
 import { cors } from './middleware/cors.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { logger } from './middleware/logger.js'
+import { loadConfig } from './config.js'
 
 // 初始化Rag知识库
 
 export async function startServer(){
+  // 配置检查
+  const config = loadConfig()
   const ragEngine = await initRag()
   const healthRouter = createHealthRouter(ragEngine)
-  const chatRouter = createChatRouter(ragEngine)
+  const chatRouter = createChatRouter(ragEngine, config)
 
   const app = new Koa() // 创建 Koa 实例
   // 错误处理中间件

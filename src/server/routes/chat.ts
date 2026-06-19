@@ -7,13 +7,14 @@ import { createSSEStream, sendSSEEvent } from "../sse.js"
 import type { RAGEngine } from "../../rag/rag-engine.js"
 import type { Context } from "koa"
 import { validateBody } from "../middleware/validate.js"
+import type { AppConfig } from "../config.js"
 
 // const API_BASE_URL = process.env.API_BASE_URL ?? "https://api.siliconflow.cn/v1"
 // const API_KEY      = process.env.API_KEY ?? ""
 // const MODEL        = process.env.MODEL ?? "nex-agi/Nex-N2-Pro"
 // const SYSTEM_PROMPT = `你是一个期末复习助手，帮助大学生准备考试。你有工具可用，需要时使用它们，不需要时直接回答。始终用中文回答。`
 
-export function createChatRouter(ragEngine?: RAGEngine) {
+export function createChatRouter(ragEngine: RAGEngine | undefined, config: AppConfig) {
   const router = new Router({ prefix: '/api' })
   // FIX: 跨请求保留 memory,按 conversationId 索引
   // 证据: debug-memory-lost-on-continue 中"继续"丢失上下文,根因是每次请求 new MemoryManager()
@@ -35,13 +36,13 @@ export function createChatRouter(ragEngine?: RAGEngine) {
     // 创建agent
     try {
     const agent = new NativeToolAgent({
-      baseURL: process.env.API_BASE_URL!,
-      apiKey: process.env.API_KEY!,
-      model: process.env.MODEL!,
+      baseURL: config.API_BASE_URL,
+      apiKey: config.API_KEY,
+      model: config.MODEL,
       memory,
       registry: createTools(useRag ? ragEngine : undefined),
     })
-    agent.init(process.env.SYSTEM_PROMPT!)
+    agent.init(config.SYSTEM_PROMPT)
     // 需要等待 agent.streamChat 完成，才能结束流
     //
     // 【流式关键】agent.streamChat 内部使用 OpenAI SDK 的 stream: true，
