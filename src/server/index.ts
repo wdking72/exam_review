@@ -34,9 +34,26 @@ export async function startServer(){
 
   const PORT = parseInt(process.env.PORT ?? "3001", 10)
   return new Promise<void>((resolve, reject) => {
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`)
       resolve()
     })
+    server.on('error', reject) // 监听服务器错误事件, 并拒绝 Promise
+    // 优雅关闭：收到终止信号时，停止接收新请求，等待已有请求完成
+    function shutDown(signal: string) {
+      console.log(`\n[Shutdown]收到${signal}，正在关闭服务`)
+      server.close(() => {
+        console.log('[Shutdown]服务已关闭,退出进程')
+        process.exit(0)
+      })
+      // 超时兜底
+      setTimeout(() => {
+        console.error('[Shutdown]服务关闭超时,强制退出进程')
+        process.exit(1)
+      }, 5000);
+    }
+    // 监听终止信号
+    process.on('SIGINT', () => shutDown('SIGINT')) // Ctrl+C
+    process.on('SIGTERM', () => shutDown('SIGTERM')) // 部署系统终止
   })
 }
