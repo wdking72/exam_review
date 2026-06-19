@@ -4,32 +4,31 @@ import { bodyParser } from '@koa/bodyparser'
 import { initRag } from '../rag/init-rag.js' 
 import { createHealthRouter } from './routes/health.js'
 import { createChatRouter } from './routes/chat.js'
+import { cors } from './middleware/cors.js'
+import { errorHandler } from './middleware/error-handler.js'
+import { logger } from './middleware/logger.js'
 
 // 初始化Rag知识库
 
 export async function startServer(){
   const ragEngine = await initRag()
-
-  const app = new Koa() // 创建 Koa 实例
-  // cors跨域处理
-  app.use(async (ctx, next) => {
-    ctx.set("Access-Control-Allow-Origin", "*")
-    ctx.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    ctx.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-    if (ctx.method === "OPTIONS") {
-      ctx.status = 204
-      return
-    }
-    await next()
-  })
-  app.use(bodyParser()) // 解析请求体
   const healthRouter = createHealthRouter(ragEngine)
   const chatRouter = createChatRouter(ragEngine)
 
+  const app = new Koa() // 创建 Koa 实例
+  // 错误处理中间件
+  app.use(errorHandler()) // 在最外层，兜住所有错误
+  // 日志中间件
+  app.use(logger())
+  // cors跨域处理
+  app.use(cors()) // cors() 是函数调用 — 它返回中间件函数，Koa 的 app.use() 要的是函数
+  app.use(bodyParser()) // 解析请求体
+  // 注册路由
   app.use(healthRouter.routes())
   app.use(healthRouter.allowedMethods())    
   app.use(chatRouter.routes())
   app.use(chatRouter.allowedMethods())
+
   const PORT = parseInt(process.env.PORT ?? "3001", 10)
   return new Promise<void>((resolve, reject) => {
     app.listen(PORT, () => {
