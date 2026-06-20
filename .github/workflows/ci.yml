@@ -1,24 +1,20 @@
-name: CI
+name: CI # 名称
 
-on:
-  push:
+on: # 触发条件
+  push: # push到master时触发
     branches: [master]
-  pull_request:
+  pull_request: # pull_request到master时触发
     branches: [master]
 
-jobs:
-  quality:
-    runs-on: ubuntu-latest
-    steps:
+jobs: # 任务
+  quality: # 任务名称
+    runs-on: ubuntu-latest # 运行环境
+    steps: # 步骤
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-
       - run: npm ci
-
       - run: npm run typecheck
-
       - run: npm run build
