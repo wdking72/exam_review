@@ -1,0 +1,24 @@
+name: CD
+
+on:
+  push:
+    branches: [master]
+
+permissions: # 权限
+  contents: read #允许读取仓库代码
+  packages: write #允许推送镜像到 ghcr.io
+
+jobs:
+  deploys:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3 #官方的 Docker 登录 action
+        with:
+          registry: ghcr.io #登录 GitHub 的镜像仓库
+          username: ${{ github.actor }} #自动填入触发 workflow 的用户名
+          password: ${{ secrets.GITHUB_TOKEN }} #GitHub 自动生成的临时令牌，不用你手动创建
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:latest
