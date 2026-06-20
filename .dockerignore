@@ -1,0 +1,8 @@
+node_modules
+dist
+.env.local
+.git
+.github
+.rag-cache
+.claude
+frontend
